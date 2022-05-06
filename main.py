@@ -8,7 +8,9 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 
-def main(mainpath):
+def main(mainpath,load=False):
+
+
     torch.cuda.device(0)
     plt.ion()
     trainpath = os.path.join(mainpath, 'image')
@@ -43,6 +45,17 @@ def main(mainpath):
                           weight_decay=0.0005)
     criterion = nn.BCELoss()
     fig = plt.figure(figsize=(14, 9), dpi=80, facecolor='w', edgecolor='k')
+
+    if load:
+        checkpoint = torch.load(os.path.join(mainpath, 'model.pt'))
+        net.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
+
+        #model.eval()
+        # - or -
+        #model.train()
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -86,7 +99,14 @@ def main(mainpath):
 
         torch.save(net.state_dict(), os.path.join(mainpath, 'model.pt'))
 
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': net.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': loss,
+        }, os.path.join(mainpath, 'model.pt'))
+
 
 if __name__ == "__main__":
     rootpath = 'membrane/train/'
-    main(rootpath)
+    main(rootpath, load=True)
