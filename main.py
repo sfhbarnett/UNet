@@ -12,17 +12,21 @@ import matplotlib.pyplot as plt
 def main(mainpath):
     torch.cuda.device(0)
     plt.ion()
-    trainpath = os.path.join(mainpath, 'train')
-    trainmasks = os.path.join(mainpath, 'masks')
+    trainpath = os.path.join(mainpath, 'image')
+    trainmasks = os.path.join(mainpath, 'label')
     filelist = os.listdir(trainpath)
     masklist = os.listdir(trainmasks)
-    tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    rgb = 0
+    if rgb:
+        tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    else:
+        tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
     dataset = Datastore.Datastore(filelist, masklist, mainpath, transforms=tforms)
     batch_N = 1
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
     N_train = len(dataset)
-    gpu = 1
-    net = UNet(n_channels=3, n_classes=1)
+    gpu = 0
+    net = UNet(n_channels=1, n_classes=1)
     if gpu == 1:
         gpu = torch.device("cuda:0")
         print("Connected to device: ", gpu)
@@ -45,23 +49,28 @@ def main(mainpath):
             inputs = inputs.permute(0, 1, 2, 3)
             masks = data['mask']
 
-            inputs = inputs.to(gpu)
-            masks = masks.to(gpu)
+            if gpu:
+                inputs = inputs.to(gpu)
+                masks = masks.to(gpu)
 
             predicted_masks = net(inputs)
 
             if gpu == 0:
-                fig = plt.figure(figsize=(18, 16), dpi=80, facecolor='w', edgecolor='k')
+                fig = plt.figure(figsize=(14, 9), dpi=80, facecolor='w', edgecolor='k')
                 plt.subplot(1, 3, 1)
+                plt.title("Input")
                 im = plt.imshow(inputs[0].permute(1, 2, 0).detach().numpy().squeeze())
                 plt.colorbar(im, fraction=0.046, pad=0.04)
                 plt.subplot(1, 3, 2)
+                plt.title("Mask")
                 im = plt.imshow(masks[0].detach().numpy().squeeze())
                 plt.colorbar(im, fraction=0.046, pad=0.04)
                 plt.subplot(1, 3, 3)
+                plt.title("Prediction")
                 im = plt.imshow(predicted_masks[0].detach().numpy().squeeze())
                 plt.colorbar(im, fraction=0.046, pad=0.04)
-                plt.show();
+                plt.show()
+                plt.draw()
 
             loss = criterion(predicted_masks.view(-1), masks.view(-1))
             epoch_loss += loss.item()
@@ -75,5 +84,5 @@ def main(mainpath):
 
 
 if __name__ == "__main__":
-    mainpath = r'C:\Users\MBISFHB\Documents\DL_SEG\prac'
-    main(mainpath)
+    rootpath = 'membrane/train/'
+    main(rootpath)
