@@ -27,7 +27,7 @@ class Datastore(Dataset):
             mask = Image.open(mask_name)
             mask = masktransform(mask)
             mask = mask[:,5:-5, 5:-5]
-            mask = mask*255
+            mask = mask
             sample = {'image': image, 'mask': mask}
         else:
             image = Image.open(img_name)

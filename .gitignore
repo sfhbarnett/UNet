@@ -130,3 +130,6 @@ dmypy.json
 
 #image files
 *.tif
+
+#Pytorch models
+*.pt

@@ -19,14 +19,16 @@ def main(mainpath):
     rgb = 0
     if rgb:
         tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        net = UNet(n_channels=3, n_classes=1)
     else:
         tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
+        net = UNet(n_channels=1, n_classes=1)
     dataset = Datastore.Datastore(filelist, masklist, mainpath, transforms=tforms)
     batch_N = 1
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
     N_train = len(dataset)
     gpu = 0
-    net = UNet(n_channels=1, n_classes=1)
+
     if gpu == 1:
         gpu = torch.device("cuda:0")
         print("Connected to device: ", gpu)
@@ -41,6 +43,7 @@ def main(mainpath):
                           momentum=0.9,
                           weight_decay=0.0005)
     criterion = nn.BCELoss()
+    fig = plt.figure(figsize=(14, 9), dpi=80, facecolor='w', edgecolor='k')
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -56,7 +59,7 @@ def main(mainpath):
             predicted_masks = net(inputs)
 
             if gpu == 0:
-                fig = plt.figure(figsize=(14, 9), dpi=80, facecolor='w', edgecolor='k')
+
                 plt.subplot(1, 3, 1)
                 plt.title("Input")
                 im = plt.imshow(inputs[0].permute(1, 2, 0).detach().numpy().squeeze())
@@ -71,6 +74,7 @@ def main(mainpath):
                 plt.colorbar(im, fraction=0.046, pad=0.04)
                 plt.show()
                 plt.draw()
+                plt.pause(0.0001)
 
             loss = criterion(predicted_masks.view(-1), masks.view(-1))
             epoch_loss += loss.item()
@@ -80,7 +84,8 @@ def main(mainpath):
             loss.backward()
             optimizer.step()
         print('Epoch finished ! Loss: {}'.format(epoch_loss / i))
-    torch.save(net.state_dict(), os.path.join(mainpath, 'model.pth'))
+
+        torch.save(net.state_dict(), os.path.join(mainpath, 'model.pt'))
 
 
 if __name__ == "__main__":
