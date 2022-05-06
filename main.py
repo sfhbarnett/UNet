@@ -1,7 +1,6 @@
 import torch
 import os
 from torchvision import transforms
-import torch.nn.functional as F
 import Datastore
 from Net import UNet
 from torch import optim
