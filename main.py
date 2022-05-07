@@ -8,8 +8,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 
-def main(mainpath,load=False):
-
+def main(mainpath, load=False):
 
     torch.cuda.device(0)
     plt.ion()
@@ -19,7 +18,9 @@ def main(mainpath,load=False):
     masklist = os.listdir(trainmasks)
     rgb = 0
     if rgb:
-        tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        tforms = transforms.Compose([transforms.ToTensor(),
+                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                     transforms.RandomCrop(100)])
         net = UNet(n_channels=3, n_classes=1)
     else:
         tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
@@ -34,7 +35,7 @@ def main(mainpath,load=False):
         gpu = torch.device("cuda:0")
         print("Connected to device: ", gpu)
         net = net.to(gpu)
-    epochs = 1
+    epochs = 5
     lr = 0.1
     batch_size = 1
     val_percent = 0.05
@@ -53,9 +54,10 @@ def main(mainpath,load=False):
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
 
-        #model.eval()
-        # - or -
-        #model.train()
+    train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath)
+
+
+def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath):
 
     for epoch in range(epochs):
         epoch_loss = 0.0
@@ -99,12 +101,16 @@ def main(mainpath,load=False):
 
         torch.save(net.state_dict(), os.path.join(mainpath, 'model.pt'))
 
+        modelsavepath = os.path.join(mainpath,'model.pt')
+
         torch.save({
             'epoch': epoch,
             'model_state_dict': net.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
-        }, os.path.join(mainpath, 'model.pt'))
+        }, modelsavepath)
+
+        print(f'Model saved at {modelsavepath}')
 
 
 if __name__ == "__main__":
