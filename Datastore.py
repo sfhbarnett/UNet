@@ -6,18 +6,6 @@ import os
 
 
 def transform(image, mask):
-    #randomCrop 50 percent of time
-    if random.random() < 0.5:
-        i, j, h, w = transforms.RandomCrop.get_params(
-            image, output_size=(120, 120))
-        image = transforms.functional.crop(image, i, j, h, w)
-        mask = transforms.functional.crop(mask, i, j, h, w)
-
-        toScale = random.random()
-        if toScale < 0.5:
-            resize = transforms.Resize(size=(512,512))
-            image = resize(image)
-            mask = resize(mask)
 
     # Random horizontal flipping
     if random.random() > 0.5:

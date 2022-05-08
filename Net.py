@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-
+import numpy as np
 
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes):
@@ -11,6 +11,7 @@ class UNet(nn.Module):
         self.down2 = down(128, 256)
         self.down3 = down(256, 512)
         self.midconv = nn.Sequential(
+            nn.MaxPool2d(2),
             nn.Conv2d(512, 1024, 3),
             nn.ReLU(inplace=True),
             nn.Conv2d(1024, 1024, 3),
@@ -33,7 +34,8 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         x = self.outc(x)
-        return F.sigmoid(x)
+        print(np.min(torch.sigmoid(x).detach().numpy().squeeze()))
+        return torch.sigmoid(x)
 
 
 class down(nn.Module):
@@ -100,7 +102,7 @@ class up2(nn.Module):
     def __init__(self, inchannels, outchannels):
         super(up2, self).__init__()
         self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.upconv = nn.Conv2d(inchannels, int(inchannels/2), 3)
+        self.upconv = nn.Conv2d(inchannels, int(inchannels/2), 1)
         self.crossconv = nn.Sequential(
             nn.Conv2d(inchannels, outchannels, 3),
             nn.ReLU(inplace=True),
@@ -114,8 +116,10 @@ class up2(nn.Module):
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
 
-        x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2))
+        #x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
+        #                diffY // 2, diffY - diffY // 2))
+        s = x2.size()[2]
+        x2 = x2[:, :, diffY//2:-diffY//2, diffX//2:-diffX//2]
         x = torch.cat([x2, x1], dim=1)
         x = self.crossconv(x)
         return x

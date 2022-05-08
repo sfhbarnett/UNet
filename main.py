@@ -6,6 +6,8 @@ from Net import UNet
 from torch import optim
 import torch.nn as nn
 import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
+
 
 
 def main(mainpath, load=False):
@@ -45,26 +47,31 @@ def main(mainpath, load=False):
                           momentum=0.9,
                           weight_decay=0.0005)
     criterion = nn.BCELoss()
-    fig = plt.figure(figsize=(14, 9), dpi=80, facecolor='w', edgecolor='k')
+    fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')
 
     if load:
-        checkpoint = torch.load(os.path.join(mainpath, 'model.pt'))
-        net.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch = checkpoint['epoch']
-        loss = checkpoint['loss']
+        try:
+            checkpoint = torch.load(os.path.join(mainpath, 'model.pt'))
+            net.load_state_dict(checkpoint['model_state_dict'])
+            #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            epoch = checkpoint['epoch']
+            loss = checkpoint['loss']
+        except FileNotFoundError:
+            print(f"No model file found at {mainpath}")
 
     train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath)
 
 
 def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath):
-
+    writer = SummaryWriter()
     for epoch in range(epochs):
         epoch_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             inputs = data['image']
             inputs = inputs.permute(0, 1, 2, 3)
             masks = data['mask']
+            diff = masks.size()[3]-322
+            masks = masks[:,:,diff//2:-diff//2,diff//2:-diff//2]
 
             if gpu:
                 inputs = inputs.to(gpu)
@@ -74,30 +81,37 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
 
             if gpu == 0:
 
-                plt.subplot(1, 3, 1)
+                plt.subplot(1, 4, 1)
                 plt.title("Input")
                 im = plt.imshow(inputs[0].permute(1, 2, 0).detach().numpy().squeeze())
                 plt.colorbar(im, fraction=0.046, pad=0.04)
-                plt.subplot(1, 3, 2)
+                plt.subplot(1, 4, 2)
                 plt.title("Mask")
                 im = plt.imshow(masks[0].detach().numpy().squeeze())
                 plt.colorbar(im, fraction=0.046, pad=0.04)
-                plt.subplot(1, 3, 3)
+                plt.subplot(1, 4, 3)
                 plt.title("Prediction")
                 im = plt.imshow(predicted_masks[0].detach().numpy().squeeze())
+                plt.colorbar(im, fraction=0.046, pad=0.04)
+                plt.subplot(1, 4, 4)
+                plt.title("Prediction scaled")
+                im = plt.imshow(predicted_masks[0].detach().numpy().squeeze(), vmin=0, vmax=1)
                 plt.colorbar(im, fraction=0.046, pad=0.04)
                 plt.show()
                 plt.draw()
                 plt.pause(0.0001)
-
-            loss = criterion(predicted_masks.view(-1), masks.view(-1))
+            print(masks.size())
+            print(predicted_masks.size())
+            loss = criterion(predicted_masks.view(-1), masks.contiguous().view(-1))
             epoch_loss += loss.item()
+
             print('{0:.4f} --- loss: {1:.6f}'.format(i * batch_N / N_train, loss.item()))
             optimizer.zero_grad()
 
             loss.backward()
             optimizer.step()
         print('Epoch finished ! Loss: {}'.format(epoch_loss / i))
+        writer.add_scalar("Loss/train", epoch_loss/i, epoch)
 
         torch.save(net.state_dict(), os.path.join(mainpath, 'model.pt'))
 
