@@ -37,14 +37,14 @@ def main(mainpath, load=False):
         gpu = torch.device("cuda:0")
         print("Connected to device: ", gpu)
         net = net.to(gpu)
-    epochs = 5
+    epochs = 10
     lr = 0.1
     batch_size = 1
     val_percent = 0.05
     img_scale = 0.5
     optimizer = optim.SGD(net.parameters(),
                           lr=lr,
-                          momentum=0.9,
+                          momentum=0.99,
                           weight_decay=0.0005)
     criterion = nn.BCELoss()
     fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')

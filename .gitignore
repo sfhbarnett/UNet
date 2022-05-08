@@ -133,3 +133,7 @@ dmypy.json
 
 #Pytorch models
 *.pt
+
+
+test.py
+test2.py
