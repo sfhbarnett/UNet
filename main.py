@@ -38,20 +38,20 @@ def main(mainpath, load=False):
         print("Connected to device: ", gpu)
         net = net.to(gpu)
     epochs = 10
-    lr = 0.1
+    lr = 0.001
     batch_size = 1
     val_percent = 0.05
     img_scale = 0.5
     optimizer = optim.SGD(net.parameters(),
                           lr=lr,
-                          momentum=0.99,
-                          weight_decay=0.0005)
+                          momentum=0.9)
     criterion = nn.BCELoss()
     fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')
+    fig.tight_layout()
 
     if load:
         try:
-            checkpoint = torch.load(os.path.join(mainpath, 'model.pt'))
+            checkpoint = torch.load('model.pt')
             net.load_state_dict(checkpoint['model_state_dict'])
             #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             epoch = checkpoint['epoch']
@@ -72,7 +72,7 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
             masks = data['mask']
             diff = masks.size()[3]-322
             masks = masks[:,:,diff//2:-diff//2,diff//2:-diff//2]
-
+            optimizer.zero_grad()
             if gpu:
                 inputs = inputs.to(gpu)
                 masks = masks.to(gpu)
@@ -84,29 +84,27 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
                 plt.subplot(1, 4, 1)
                 plt.title("Input")
                 im = plt.imshow(inputs[0].permute(1, 2, 0).detach().numpy().squeeze())
-                plt.colorbar(im, fraction=0.046, pad=0.04)
+                plt.colorbar(im, orientation='horizontal',fraction=0.046, pad=0.04)
                 plt.subplot(1, 4, 2)
                 plt.title("Mask")
                 im = plt.imshow(masks[0].detach().numpy().squeeze())
-                plt.colorbar(im, fraction=0.046, pad=0.04)
+                plt.colorbar(im, orientation='horizontal',fraction=0.046, pad=0.04)
                 plt.subplot(1, 4, 3)
                 plt.title("Prediction")
                 im = plt.imshow(predicted_masks[0].detach().numpy().squeeze())
-                plt.colorbar(im, fraction=0.046, pad=0.04)
+                plt.colorbar(im, orientation='horizontal', fraction=0.046, pad=0.04)
                 plt.subplot(1, 4, 4)
                 plt.title("Prediction scaled")
                 im = plt.imshow(predicted_masks[0].detach().numpy().squeeze(), vmin=0, vmax=1)
-                plt.colorbar(im, fraction=0.046, pad=0.04)
+                plt.colorbar(im, orientation='horizontal',fraction=0.046, pad=0.04)
                 plt.show()
                 plt.draw()
                 plt.pause(0.0001)
-            print(masks.size())
-            print(predicted_masks.size())
             loss = criterion(predicted_masks.view(-1), masks.contiguous().view(-1))
             epoch_loss += loss.item()
 
             print('{0:.4f} --- loss: {1:.6f}'.format(i * batch_N / N_train, loss.item()))
-            optimizer.zero_grad()
+            #optimizer.zero_grad()
 
             loss.backward()
             optimizer.step()
@@ -115,7 +113,7 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
 
         torch.save(net.state_dict(), os.path.join(mainpath, 'model.pt'))
 
-        modelsavepath = os.path.join(mainpath,'model.pt')
+        modelsavepath = 'model.pt'
 
         torch.save({
             'epoch': epoch,

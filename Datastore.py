@@ -45,6 +45,10 @@ def transform(image, mask):
     sx, sy = generateField(image, 50, 1)
     image = elasticdeform(image, (sx, sy))
     mask = elasticdeform(mask, (sx, sy))
+    mask = mask.numpy().squeeze()
+    mask[mask<0.5] = 0
+    mask[mask>0.5] = 1
+    mask = torch.from_numpy(mask).unsqueeze(0)
 
     # Random horizontal flipping
     if random.random() > 0.5:
@@ -79,7 +83,7 @@ class Datastore(Dataset):
             mask = Image.open(mask_name)
             mask = masktransform(mask)
             image, mask = transform(image, mask)
-            mask = mask[:, 5:-5, 5:-5] #Note sure why this is here
+           # mask = mask[:, 5:-5, 5:-5] #Note sure why this is here
             sample = {'image': image, 'mask': mask}
         else:
             image = Image.open(img_name)

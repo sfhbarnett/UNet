@@ -137,3 +137,8 @@ dmypy.json
 
 test.py
 test2.py
+
+#Tensorboard files
+/runs/
+
+.DS_Store

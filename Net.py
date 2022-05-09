@@ -34,7 +34,7 @@ class UNet(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         x = self.outc(x)
-        print(np.min(torch.sigmoid(x).detach().numpy().squeeze()))
+        #print(np.min(torch.sigmoid(x).detach().numpy().squeeze()))
         return torch.sigmoid(x)
 
 
@@ -111,7 +111,8 @@ class up2(nn.Module):
         )
 
     def forward(self, x, x2):
-        x = self.up(x)
+        #x = self.up(x)
+        x = F.interpolate(x,scale_factor=2,mode="nearest")
         x1 = self.upconv(x)
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
@@ -119,7 +120,7 @@ class up2(nn.Module):
         #x1 = F.pad(x1, (diffX // 2, diffX - diffX // 2,
         #                diffY // 2, diffY - diffY // 2))
         s = x2.size()[2]
-        x2 = x2[:, :, diffY//2:-diffY//2, diffX//2:-diffX//2]
+        x2 = x2[:, :, diffY//2:-diffY//2, diffX//2:-diffX//2] # might need to substract one from each of these
         x = torch.cat([x2, x1], dim=1)
         x = self.crossconv(x)
         return x
