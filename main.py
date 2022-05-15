@@ -3,11 +3,12 @@ import os
 from torchvision import transforms
 import Datastore
 from Net import UNet
+#from unet_model import UNet
 from torch import optim
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
-
+import numpy as np
 
 
 def main(mainpath, load=False):
@@ -37,7 +38,7 @@ def main(mainpath, load=False):
         gpu = torch.device("cuda:0")
         print("Connected to device: ", gpu)
         net = net.to(gpu)
-    epochs = 10
+    epochs = 50
     lr = 0.001
     batch_size = 1
     val_percent = 0.05
@@ -45,7 +46,7 @@ def main(mainpath, load=False):
     optimizer = optim.SGD(net.parameters(),
                           lr=lr,
                           momentum=0.9)
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
     fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')
     fig.tight_layout()
 
@@ -71,7 +72,7 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
             inputs = inputs.permute(0, 1, 2, 3)
             masks = data['mask']
             diff = masks.size()[3]-322
-            masks = masks[:,:,diff//2:-diff//2,diff//2:-diff//2]
+            #masks = masks[:,:,diff//2:-diff//2,diff//2:-diff//2]
             optimizer.zero_grad()
             if gpu:
                 inputs = inputs.to(gpu)
@@ -96,10 +97,11 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
                 plt.subplot(1, 4, 4)
                 plt.title("Prediction scaled")
                 im = plt.imshow(predicted_masks[0].detach().numpy().squeeze(), vmin=0, vmax=1)
-                plt.colorbar(im, orientation='horizontal',fraction=0.046, pad=0.04)
+                plt.colorbar(im, orientation='horizontal', fraction=0.046, pad=0.04)
                 plt.show()
                 plt.draw()
                 plt.pause(0.0001)
+            print(np.min(predicted_masks.detach().numpy()))
             loss = criterion(predicted_masks.view(-1), masks.contiguous().view(-1))
             epoch_loss += loss.item()
 
@@ -108,7 +110,7 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
 
             loss.backward()
             optimizer.step()
-        print('Epoch finished ! Loss: {}'.format(epoch_loss / i))
+        print('Epoch finished ! Mean loss: {}'.format(epoch_loss / i))
         writer.add_scalar("Loss/train", epoch_loss/i, epoch)
 
         torch.save(net.state_dict(), os.path.join(mainpath, 'model.pt'))

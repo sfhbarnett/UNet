@@ -23,8 +23,8 @@ def generateField(image, subsamplevector, strength):
     sxnew = f(xnew, ynew)
     f = interpolate.interp2d(x, y, sy)
     synew = f(xnew, ynew)
-    #plt.quiver(xnew, ynew, sxnew, synew,scale=10)
-    #plt.show()
+    # plt.quiver(xnew, ynew, sxnew, synew,scale=10)
+    # plt.show()
     return sxnew, synew
 
 
@@ -41,13 +41,13 @@ def elasticdeform(image, field):
 
 def transform(image, mask):
 
-    #Elastic deformations
+    # Elastic deformations
     sx, sy = generateField(image, 50, 1)
     image = elasticdeform(image, (sx, sy))
     mask = elasticdeform(mask, (sx, sy))
     mask = mask.numpy().squeeze()
-    mask[mask<0.5] = 0
-    mask[mask>0.5] = 1
+    mask[mask <= 0.5] = 0
+    mask[mask > 0.5] = 1
     mask = torch.from_numpy(mask).unsqueeze(0)
 
     # Random horizontal flipping
