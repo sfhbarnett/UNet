@@ -3,7 +3,6 @@ import os
 from torchvision import transforms
 import Datastore
 from Net import UNet
-#from unet_model import UNet
 from torch import optim
 import torch.nn as nn
 import matplotlib.pyplot as plt
@@ -20,14 +19,15 @@ def main(mainpath, load=False):
     filelist = os.listdir(trainpath)
     masklist = os.listdir(trainmasks)
     rgb = 0
+    #If data is multi or single channel
     if rgb:
         tforms = transforms.Compose([transforms.ToTensor(),
-                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                                     transforms.RandomCrop(100)])
+                                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         net = UNet(n_channels=3, n_classes=1)
     else:
         tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
         net = UNet(n_channels=1, n_classes=1)
+
     dataset = Datastore.Datastore(filelist, masklist, mainpath, transforms=tforms)
     batch_N = 1
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
@@ -38,11 +38,11 @@ def main(mainpath, load=False):
         gpu = torch.device("cuda:0")
         print("Connected to device: ", gpu)
         net = net.to(gpu)
+
     epochs = 50
     lr = 0.001
     batch_size = 1
     val_percent = 0.05
-    img_scale = 0.5
     optimizer = optim.SGD(net.parameters(),
                           lr=lr,
                           momentum=0.9)
@@ -50,6 +50,7 @@ def main(mainpath, load=False):
     fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')
     fig.tight_layout()
 
+    # Load in previous model
     if load:
         try:
             checkpoint = torch.load('model.pt')
@@ -71,8 +72,6 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
             inputs = data['image']
             inputs = inputs.permute(0, 1, 2, 3)
             masks = data['mask']
-            diff = masks.size()[3]-322
-            #masks = masks[:,:,diff//2:-diff//2,diff//2:-diff//2]
             optimizer.zero_grad()
             if gpu:
                 inputs = inputs.to(gpu)
@@ -81,7 +80,6 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
             predicted_masks = net(inputs)
 
             if gpu == 0:
-
                 plt.subplot(1, 4, 1)
                 plt.title("Input")
                 im = plt.imshow(inputs[0].permute(1, 2, 0).detach().numpy().squeeze())
@@ -101,12 +99,10 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
                 plt.show()
                 plt.draw()
                 plt.pause(0.0001)
-            print(np.min(predicted_masks.detach().numpy()))
             loss = criterion(predicted_masks.view(-1), masks.contiguous().view(-1))
             epoch_loss += loss.item()
 
             print('{0:.4f} --- loss: {1:.6f}'.format(i * batch_N / N_train, loss.item()))
-            #optimizer.zero_grad()
 
             loss.backward()
             optimizer.step()

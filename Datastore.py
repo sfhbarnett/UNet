@@ -34,7 +34,8 @@ def elasticdeform(image, field):
     src_cols = np.linspace(1, cols, cols)
     src_rows = np.linspace(1, rows, rows)
     src_rows, src_cols = np.meshgrid(src_rows, src_cols)
-    out_coord = [src_rows+sx*100, src_cols+sy*100]
+    out_coord = [src_rows+sx*100, src_cols+sy*100] # scale vectors by a factor of 100
+    #convert tensor to numpy and perform elastic deformations
     out_img = torch.from_numpy(map_coordinates(image.numpy().squeeze(), out_coord, mode='nearest')).unsqueeze(0)
     return out_img
 
@@ -82,8 +83,8 @@ class Datastore(Dataset):
             masktransform = transforms.Compose([transforms.ToTensor()])
             mask = Image.open(mask_name)
             mask = masktransform(mask)
+            # Flip image and elastic deform
             image, mask = transform(image, mask)
-           # mask = mask[:, 5:-5, 5:-5] #Note sure why this is here
             sample = {'image': image, 'mask': mask}
         else:
             image = Image.open(img_name)
