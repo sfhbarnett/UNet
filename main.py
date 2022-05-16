@@ -7,17 +7,15 @@ from torch import optim
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
+from PIL import Image
 import numpy as np
 
 
-def main(mainpath, load=False):
+def main(mainpath, load=False, training=True):
 
     torch.cuda.device(0)
     plt.ion()
-    trainpath = os.path.join(mainpath, 'image')
-    trainmasks = os.path.join(mainpath, 'label')
-    filelist = os.listdir(trainpath)
-    masklist = os.listdir(trainmasks)
+
     rgb = 0
     #If data is multi or single channel
     if rgb:
@@ -28,40 +26,48 @@ def main(mainpath, load=False):
         tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
         net = UNet(n_channels=1, n_classes=1)
 
-    dataset = Datastore.Datastore(filelist, masklist, mainpath, transforms=tforms)
-    batch_N = 1
-    trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
-    N_train = len(dataset)
-    gpu = 0
+    if training:
+        trainpath = os.path.join(mainpath, 'image')
+        filelist = os.listdir(trainpath)
+        trainmasks = os.path.join(mainpath, 'label')
+        masklist = os.listdir(trainmasks)
+        dataset = Datastore.Datastore(filelist, masklist, mainpath, transforms=tforms)
+        batch_N = 1
+        trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
+        N_train = len(dataset)
+        gpu = 0
 
-    if gpu == 1:
-        gpu = torch.device("cuda:0")
-        print("Connected to device: ", gpu)
-        net = net.to(gpu)
+        if gpu == 1:
+            gpu = torch.device("cuda:0")
+            print("Connected to device: ", gpu)
+            net = net.to(gpu)
 
-    epochs = 50
-    lr = 0.001
-    batch_size = 1
-    val_percent = 0.05
-    optimizer = optim.SGD(net.parameters(),
-                          lr=lr,
-                          momentum=0.9)
-    criterion = nn.BCEWithLogitsLoss()
-    fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')
-    fig.tight_layout()
+        epochs = 50
+        lr = 0.001
+        val_percent = 0.05
+        optimizer = optim.SGD(net.parameters(),
+                              lr=lr,
+                              momentum=0.9)
+        criterion = nn.BCEWithLogitsLoss()
+        fig = plt.figure(figsize=(18, 8), dpi=80, facecolor='w', edgecolor='k')
+        fig.tight_layout()
 
-    # Load in previous model
-    if load:
-        try:
-            checkpoint = torch.load('model.pt')
-            net.load_state_dict(checkpoint['model_state_dict'])
-            #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            epoch = checkpoint['epoch']
-            loss = checkpoint['loss']
-        except FileNotFoundError:
-            print(f"No model file found at {mainpath}")
+        # Load in previous model
+        if load:
+            try:
+                checkpoint = torch.load('model.pt')
+                net.load_state_dict(checkpoint['model_state_dict'])
+                #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                epoch = checkpoint['epoch']
+                loss = checkpoint['loss']
+            except FileNotFoundError:
+                print(f"No model file found at {mainpath}")
 
-    train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath)
+        train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath)
+    else:
+        checkpoint = torch.load('model.pt')
+        net.load_state_dict(checkpoint['model_state_dict'])
+        predict(net, mainpath)
 
 
 def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train, mainpath):
@@ -122,7 +128,30 @@ def train(net, optimizer, criterion, trainloader, epochs, gpu, batch_N, N_train,
 
         print(f'Model saved at {modelsavepath}')
 
+def predict(net, mainpath):
+    filelist = os.listdir(mainpath)
+    #filename = filelist[6]
+    net.eval()
+    for filename in filelist[1:]:
+        print(filename)
+        img = np.array(Image.open(os.path.join(mainpath, filename)))
+        tforms = transforms.Compose([transforms.ToTensor(), transforms.Normalize(0.5, 0.5)])
+        img = tforms(img)
+        img = img.unsqueeze(0)
+
+        with torch.no_grad():
+            prediction = net(img)
+            #plt.imshow(prediction[0].detach().numpy().squeeze())
+            #plt.show()
+            predicted = prediction[0].detach().numpy().squeeze()
+            predicted[predicted <= 0] = 0
+            predicted = Image.fromarray(predicted)
+            predicted.save(os.path.join(mainpath,filename[:-4]+'_predicted.tif'))
+
+
+
+
 
 if __name__ == "__main__":
-    rootpath = 'membrane/train/'
-    main(rootpath, load=True)
+    rootpath = 'membrane/test/'
+    main(rootpath, load=True, training=False)

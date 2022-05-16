@@ -142,4 +142,5 @@ test2.py
 /runs/
 
 .DS_Store
-.png
+*.png
+*.tif
