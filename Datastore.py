@@ -41,46 +41,47 @@ def elasticdeform(image, field):
     return out_img
 
 
-def makeMask(radius):
-    area = np.zeros((2 * radius + 1, 2 * radius + 1))
-    area[0, :] = 1
-    area[-1, :] = 1
-    area[:, 0] = 1
-    area[:, -1] = 1
-    return area
-
 def generateWeights(img):
+    """
+    Generates the weights to improve instance segmentation for closely positioned objects of the same class
+    :param img: The PIL mask to generate the weights from,
+    :return: numpy array of the weights
+    """
     img = np.asarray(img)
-
     weights = np.zeros(img.shape)
-
+    # Make 4-connected structure
     structure = np.ones((3, 3), dtype=int)
-    padamount = 10
+    structure[0, 0] = 0
+    structure[0, -1] = 0
+    structure[-1, 0] = 0
+    structure[-1, -1] = 0
 
+    # Padding to deal with boreder region
+    padamount = 10
     img = np.pad(img, padamount, mode='constant', constant_values=0)
 
+    # find connected components
     labeled, ncomponents = label(img // 255, structure)
 
-    masks = [makeMask(1), makeMask(3), makeMask(5), makeMask(7), makeMask(9)]
     sigma = 2 * 6 ** 2
+    radius = 10
 
+    # Loop over each pixel
     for x in range(padamount, img.shape[0] - padamount):
         for y in range(padamount, img.shape[1] - padamount):
             if img[x, y] == 0:
                 distance = []
-                objectlist = []
-                for radius in range(len(masks)):
-                    area = masks[radius]
-                    radius = (radius + 1) * 2 - 1
-                    crop = labeled[x - radius:x + radius + 1, y - radius:y + radius + 1]
-                    product = crop * area
-                    objectindexes = np.where(product > 0)
-                    objectlist += list(crop[objectindexes])
-                    objectlist = list(set(objectlist))
-                    distance += [*[radius] * len(objectindexes[0])]
-                    if len(objectlist) > 1:
-                        weights[x - padamount, y - padamount] = np.exp(-(distance[0] + distance[1]) ** 2 / sigma)
-                        break
+                crop = labeled[x - radius:x + radius + 1, y - radius:y + radius + 1]  # Crop out region to test
+                objects = np.unique(crop)  # find unique objects
+                for obj in objects[1:]:  # find closed point in each object to central/test pixel
+                    coords = np.where(crop == obj)
+                    d = [(coords[0][x] - radius + 1) ** 2 + (coords[1][x] - radius + 1) ** 2 for x in
+                         range(len(coords[0]))]
+                    distance.append(min(d))
+                if len(distance) > 1:
+                    distance.sort() # get closest two points and calculate weight
+                    weights[x - padamount, y - padamount] = np.exp(
+                        -(np.sqrt(distance[0]) + np.sqrt(distance[1])) ** 2 / sigma)
     return weights
 
 

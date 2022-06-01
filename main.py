@@ -41,11 +41,13 @@ def main(mainpath, load=False, training=True, weights=False, rgb=0):
                     weights = Image.fromarray(weights)
                     weights.save(os.path.join(mainpath, 'weights', file[:-4]+'.tif'))
                 print("generated weights")
+                weightspath = os.path.join(mainpath, 'weights')
+                weightslist = os.listdir(weightspath)
             else:
                 weightspath = os.path.join(mainpath,'weights')
                 weightslist = os.listdir(weightspath)
 
-        dataset = Datastore.Datastore(filelist, masklist,weightslist, mainpath, transforms=tforms)
+        dataset = Datastore.Datastore(filelist, masklist, weightslist, mainpath, transforms=tforms)
         batch_N = 1
         trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
         N_train = len(dataset)
@@ -78,7 +80,7 @@ def main(mainpath, load=False, training=True, weights=False, rgb=0):
             except FileNotFoundError:
                 print(f"No model file found at {mainpath}")
 
-        train(net, optimizer, criterion, trainloader,startepoch, epochs, gpu, batch_N, N_train, mainpath)
+        train(net, optimizer, criterion, trainloader, startepoch, epochs, gpu, batch_N, N_train, mainpath)
     else:
         checkpoint = torch.load('model2.pt')
         net.load_state_dict(checkpoint['model_state_dict'])
@@ -126,8 +128,8 @@ def train(net, optimizer, criterion, trainloader, startepoch, epochs, gpu, batch
             loss = criterion(predicted_masks.view(-1), masks.contiguous().view(-1))
             epoch_loss += loss.item()
 
-            print('Epoch - {0:.1f} --- Progress - {1:.4f} --- loss: {2:.6f}'.format(epoch,i * batch_N / N_train, loss.item()))
-
+            print('Epoch - {0:.1f} --- Progress - {1:.4f} --- loss: {2:.6f}'.format(epoch, i * batch_N / N_train,
+                                                                                    loss.item()))
             loss.backward()
             optimizer.step()
         print('Epoch finished ! Mean loss: {}'.format(epoch_loss / i))
