@@ -75,7 +75,7 @@ def main(mainpath, load=False, training=True, weights=False, rgb=0):
                 checkpoint = torch.load('model2.pt')
                 net.load_state_dict(checkpoint['model_state_dict'])
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                startepoch = checkpoint['epoch']
+                startepoch = checkpoint['epoch'] + 1
                 loss = checkpoint['loss']
             except FileNotFoundError:
                 print(f"No model file found at {mainpath}")

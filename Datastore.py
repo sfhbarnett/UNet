@@ -13,11 +13,12 @@ from scipy.ndimage import label
 def generateField(image, subsamplevector, strength):
     shape = image.shape
     nvectors = shape[1]//subsamplevector
+    nvectors = 3
     mu, sigma = 0, 0.1  # mean and standard deviation
     sx = np.random.normal(mu, sigma, (nvectors, nvectors))
     sy = np.random.normal(mu, sigma, (nvectors, nvectors))
-    x = np.linspace(1, shape[1], shape[1]//subsamplevector)
-    y = np.linspace(1, shape[2], shape[2]//subsamplevector)
+    x = np.linspace(1, shape[1], nvectors)
+    y = np.linspace(1, shape[2], nvectors)
     f = interpolate.interp2d(x, y, sx)
     xnew = np.linspace(1, shape[1], shape[1])
     ynew = np.linspace(1, shape[2], shape[2])
