@@ -84,7 +84,7 @@ def generateWeights(img):
     return weights
 
 
-def transform(image, mask):
+def transform(image, mask, weights):
 
     # Elastic deformations
     sx, sy = generateField(image, 50, 1)
@@ -94,26 +94,31 @@ def transform(image, mask):
     mask[mask <= 0.5] = 0
     mask[mask > 0.5] = 1
     mask = torch.from_numpy(mask).unsqueeze(0)
+    weights = elasticdeform(weights, (sx, sy))
 
     # Random horizontal flipping
     if random.random() > 0.5:
         image = transforms.functional.hflip(image)
         mask = transforms.functional.hflip(mask)
+        weights = transforms.functional.hflip(weights)
 
     # Random vertical flipping
     if random.random() > 0.5:
         image = transforms.functional.vflip(image)
         mask = transforms.functional.vflip(mask)
-    return image, mask
+        weights = transforms.functional.hflip(weights)
+    return image, mask, weights
 
 
 class Datastore(Dataset):
-    def __init__(self, filelist, masklist, root_dir, transforms=None):
+    def __init__(self, filelist, masklist, weightlist, root_dir, transforms=None):
         self.images = filelist
         self.masks = masklist
+        self.weights = weightlist
         self.root_dir = root_dir
         self.trainimagepath = os.path.join(self.root_dir, 'image')
         self.trainmaskpath = os.path.join(self.root_dir, 'label')
+        self.trainweightpath = os.path.join(self.root_dir, 'weights')
         self.transform = transforms
 
     def __len__(self):
@@ -122,14 +127,17 @@ class Datastore(Dataset):
     def __getitem__(self, idx):
         img_name = os.path.join(self.trainimagepath, self.images[idx])
         mask_name = os.path.join(self.trainmaskpath, self.images[idx])
+        weight_name = os.path.join(self.trainweightpath, self.weights[idx])
         if self.transform is not None:
             image = self.transform(Image.open(img_name))
             masktransform = transforms.Compose([transforms.ToTensor()])
             mask = Image.open(mask_name)
             mask = masktransform(mask)
+            weights = Image.open(weight_name)
+            weights = masktransform(weights)+1*20
             # Flip image and elastic deform
-            image, mask = transform(image, mask)
-            sample = {'image': image, 'mask': mask}
+            image, mask, weights = transform(image, mask, weights)
+            sample = {'image': image, 'mask': mask, 'weights': weights}
         else:
             image = Image.open(img_name)
             mask = Image.open(mask_name)

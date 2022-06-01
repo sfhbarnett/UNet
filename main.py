@@ -32,17 +32,20 @@ def main(mainpath, load=False, training=True, weights=False, rgb=0):
         masklist = os.listdir(trainmasks)
 
         if weights:
-            if os.path.isdir(os.path.join(mainpath,'weights')) != 1:
-                os.mkdir(os.path.join(mainpath,'weights'))
+            if os.path.isdir(os.path.join(mainpath, 'weights')) != 1:
+                os.mkdir(os.path.join(mainpath, 'weights'))
                 print("generating weights")
                 for file in masklist:
-                    img = Image.open(os.path.join(mainpath,'label',file))
+                    img = Image.open(os.path.join(mainpath, 'label', file))
                     weights = Datastore.generateWeights(img)
                     weights = Image.fromarray(weights)
-                    weights.save(os.path.join(mainpath,'weights',file[:-4]+'.tif'))
+                    weights.save(os.path.join(mainpath, 'weights', file[:-4]+'.tif'))
                 print("generated weights")
+            else:
+                weightspath = os.path.join(mainpath,'weights')
+                weightslist = os.listdir(weightspath)
 
-        dataset = Datastore.Datastore(filelist, masklist, mainpath, transforms=tforms)
+        dataset = Datastore.Datastore(filelist, masklist,weightslist, mainpath, transforms=tforms)
         batch_N = 1
         trainloader = torch.utils.data.DataLoader(dataset, batch_size=batch_N, shuffle=True, num_workers=0)
         N_train = len(dataset)
@@ -90,6 +93,7 @@ def train(net, optimizer, criterion, trainloader, startepoch, epochs, gpu, batch
             inputs = data['image']
             inputs = inputs.permute(0, 1, 2, 3)
             masks = data['mask']
+            weights = data['weights']
             optimizer.zero_grad()
             if gpu:
                 inputs = inputs.to(gpu)
@@ -117,6 +121,8 @@ def train(net, optimizer, criterion, trainloader, startepoch, epochs, gpu, batch
                 plt.show()
                 plt.draw()
                 plt.pause(0.0001)
+
+            criterion = nn.BCEWithLogitsLoss(weight=weights.view(-1))
             loss = criterion(predicted_masks.view(-1), masks.contiguous().view(-1))
             epoch_loss += loss.item()
 
