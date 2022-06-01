@@ -7,6 +7,7 @@ import os
 from scipy.ndimage import map_coordinates
 import numpy as np
 from scipy import interpolate
+from scipy.ndimage import label
 
 
 def generateField(image, subsamplevector, strength):
@@ -38,6 +39,49 @@ def elasticdeform(image, field):
     #convert tensor to numpy and perform elastic deformations
     out_img = torch.from_numpy(map_coordinates(image.numpy().squeeze(), out_coord, mode='nearest')).unsqueeze(0)
     return out_img
+
+
+def makeMask(radius):
+    area = np.zeros((2 * radius + 1, 2 * radius + 1))
+    area[0, :] = 1
+    area[-1, :] = 1
+    area[:, 0] = 1
+    area[:, -1] = 1
+    return area
+
+def generateWeights(img):
+    img = np.asarray(img)
+
+    weights = np.zeros(img.shape)
+
+    structure = np.ones((3, 3), dtype=int)
+    padamount = 10
+
+    img = np.pad(img, padamount, mode='constant', constant_values=0)
+
+    labeled, ncomponents = label(img // 255, structure)
+
+    masks = [makeMask(1), makeMask(3), makeMask(5), makeMask(7), makeMask(9)]
+    sigma = 2 * 6 ** 2
+
+    for x in range(padamount, img.shape[0] - padamount):
+        for y in range(padamount, img.shape[1] - padamount):
+            if img[x, y] == 0:
+                distance = []
+                objectlist = []
+                for radius in range(len(masks)):
+                    area = masks[radius]
+                    radius = (radius + 1) * 2 - 1
+                    crop = labeled[x - radius:x + radius + 1, y - radius:y + radius + 1]
+                    product = crop * area
+                    objectindexes = np.where(product > 0)
+                    objectlist += list(crop[objectindexes])
+                    objectlist = list(set(objectlist))
+                    distance += [*[radius] * len(objectindexes[0])]
+                    if len(objectlist) > 1:
+                        weights[x - padamount, y - padamount] = np.exp(-(distance[0] + distance[1]) ** 2 / sigma)
+                        break
+    return weights
 
 
 def transform(image, mask):
@@ -91,4 +135,6 @@ class Datastore(Dataset):
             mask = Image.open(mask_name)
             sample = {'image': image, 'mask': mask}
         return sample
+
+
 
