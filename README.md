@@ -8,7 +8,4 @@ Also included is a warp function that locally distorts the image and mask. This 
 
 Results (partway through training). Due to the loss of surround in the UNET output the mask and predections are slighly zoomed. This can be fixed in final predictions by using a tiled approach with mirrored padding.
 
-![image](https://user-images.githubusercontent.com/45679976/167451000-a6984649-5dff-43c7-a0cd-25e49c6454c7.png)
-
-![image](https://user-images.githubusercontent.com/45679976/167451091-8d168968-d8cb-4f5c-a000-e39b9b1f79d4.png)
-
+<img width="1283" alt="image" src="https://user-images.githubusercontent.com/45679976/190645169-c1919b50-5568-440d-853e-9884b5dcd544.png">
